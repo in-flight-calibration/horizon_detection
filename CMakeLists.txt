@@ -10,11 +10,29 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(ifc_msgs REQUIRED)
+find_package(ifc_tools REQUIRED)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
+find_package(rclcpp REQUIRED)
 
-add_executable(horizon_detection_node src/main.cpp)
+add_executable(horizon_detection src/main.cpp)
 
-install(TARGETS horizon_detection_node
+target_include_directories(horizon_detection PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(horizon_detection PRIVATE
+    ifc_tools::ifc_tools
+    ifc_msgs::ifc_msgs__rosidl_typesupport_cpp
+    rclcpp::rclcpp
+    ${OpenCV_LIBS}
+)
+
+install(TARGETS horizon_detection
     DESTINATION lib/${PROJECT_NAME}
 )
+
+ament_export_dependencies(ifc_msgs ifc_tools OpenCV rclcpp)
 
 ament_package()

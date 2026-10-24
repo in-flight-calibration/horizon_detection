@@ -4,12 +4,14 @@
     <name>horizon_detection</name>
     <version>0.0.0</version>
     <description>Horizon detection ROS 2 package.</description>
-    <maintainer email="wgajda@todo.todo">wgajda</maintainer>
+    <maintainer email="wggajda@gmail.com">Wojciech Gajda</maintainer>
     <license>TODO</license>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
 
-    <depend>px4_msgs</depend>
+    <depend>ifc_msgs</depend>
+    <depend>ifc_tools</depend>
+    <depend>libopencv-dev</depend>
     <depend>rclcpp</depend>
 
     <export>

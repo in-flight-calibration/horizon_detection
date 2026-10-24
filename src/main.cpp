@@ -1,7 +1,17 @@
-#include <iostream>
+#include <horizon_detection/horizon_detection.hpp>
 
-int main()
+#include <memory>
+
+int main(int argc, char* argv[])
 {
-    std::cout << "Hello World" << std::endl;
+    rclcpp::init(argc, argv);
+
+    auto node = std::make_shared<horizon::HorizonDetection>();
+
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(node->receiver());
+    executor.spin();
+
+    rclcpp::shutdown();
     return 0;
 }

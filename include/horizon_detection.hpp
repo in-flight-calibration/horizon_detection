@@ -55,7 +55,8 @@ private:
     void publish(const Horizon& horizon, const rclcpp::Time& timestamp) const
     {
         ifc_msgs::msg::Horizon message;
-        message.header.stamp = static_cast<builtin_interfaces::msg::Time>(timestamp);
+        message.header.stamp = static_cast<builtin_interfaces::msg::Time>(get_clock()->now());
+        message.image_timestamp = static_cast<builtin_interfaces::msg::Time>(timestamp);
         message.theta = horizon.theta;
         message.rho = horizon.rho;
         message.confidence = horizon.confidence;

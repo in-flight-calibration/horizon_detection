@@ -21,7 +21,7 @@ namespace horizon::hough
 struct LineGroupingParams
 {
     float angle_tolerance_degrees = 2.0f;
-    float rho_tolerance = 0.5f;
+    float rho_tolerance = 0.025f;
     int slots = 5;
 };
 

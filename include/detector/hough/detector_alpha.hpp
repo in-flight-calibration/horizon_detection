@@ -164,6 +164,8 @@ private:
             "horizon.alpha.estimator.tau_rise_seconds", params.tau_rise_seconds);
         params.minimum_confidence = declareFloat(
             "horizon.alpha.estimator.minimum_confidence", params.minimum_confidence);
+        params.switch_confirmation_frames = declare_parameter<int>(
+            "horizon.alpha.estimator.switch_confirmation_frames", params.switch_confirmation_frames);
         return params;
     }
 

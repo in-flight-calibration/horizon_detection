@@ -11,7 +11,7 @@
 - Stage headers are under `include/detector/hough/` in `horizon::hough`; shared line math is `HorizonUtils` in `horizon.hpp`. Geometry uses `float`.
 - `HorizonEstimator::estimate(timestamp_ns, groups)` returns a `Horizon` directly. It scores groups by coverage, how much other line length is below them, and rate-limited closeness to its track. Implausible jumps are rejected; the last line is held through short (< `stale_seconds`) candidate gaps. Confidence accumulation and score ambiguity handling are internal. See the workspace-root `PLAN.md` for parameters and current behavior.
 - `Horizon` fields are `theta`, `rho`, `length`, `confidence`, `sigma_theta`, `sigma_rho`; there is no `valid` field and zero confidence denotes no detection.
-- `Horizon.msg` fields are `header`, `theta`, `rho`, `confidence`, `theta_sd`, and `sigma_rho`. Publishing preserves the source image timestamp; internal `length` is not published.
+- `Horizon.msg` fields are `header`, `image_timestamp`, `theta`, `rho`, `confidence`, `theta_sd`, and `sigma_rho`. `header.stamp` is publication time; `image_timestamp` preserves the source image timestamp. Internal `length` is not published.
 - `examples/synthetic_horizon.cpp` animates a horizon and a perspective runway with two edges converging at the horizon. A headless, bounded test is `ros2 run horizon_detection synthetic_horizon --ros-args -p debug_view:=false -p duration:=30.0`; it exits nonzero if detection/accuracy criteria fail. If ROS initialization hangs, unset `ZENOH_ROUTER_CHECK_ATTEMPTS` or set it to `1` (`0` waits forever for a router).
 - Build flags: `-Wall -Wextra -Wpedantic` — keep code warning-free.
 
@@ -47,5 +47,5 @@ Image delivery requires FlightGear and the configured ROS middleware router. Deb
 ## Conventions
 
 - Four-space indentation, Allman braces; private members start with `_`.
-- Preserve source image timestamps when publishing.
+- Preserve source image timestamps in `image_timestamp` when publishing.
 - New executables must be added to `add_executable` and `install(TARGETS ... DESTINATION lib/${PROJECT_NAME})`.

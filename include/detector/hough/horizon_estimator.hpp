@@ -28,6 +28,7 @@ struct HorizonEstimatorParams
     float max_rho_rate_per_second = 1.0f;
     float tau_rise_seconds = 0.5f;
     float minimum_confidence = 0.3f;
+    int switch_confirmation_frames = 2;
 };
 
 class HorizonEstimator
@@ -55,7 +56,8 @@ public:
             _params.tau_rise_seconds <= 0.0f ||
             !std::isfinite(_params.minimum_confidence) ||
             _params.minimum_confidence < 0.0f ||
-            _params.minimum_confidence > 1.0f)
+            _params.minimum_confidence > 1.0f ||
+            _params.switch_confirmation_frames < 1)
         {
             throw std::invalid_argument("Invalid horizon estimator parameter");
         }
@@ -125,6 +127,7 @@ public:
 
         if (candidates.empty())
         {
+            resetPendingSwitch();
             clearStaleTrack(timestamp_ns, stale_ns);
             return trackedOutput(track_fresh);
         }
@@ -151,6 +154,7 @@ public:
         if (best.score < _params.minimum_score ||
             (second_best_score >= 0.0f && best.score - second_best_score < _params.ambiguity_margin))
         {
+            resetPendingSwitch();
             clearStaleTrack(timestamp_ns, stale_ns);
             return trackedOutput(track_fresh);
         }
@@ -173,18 +177,48 @@ public:
             }
         }
 
-        const bool continuing = closest != nullptr &&
-            closest->group_index == best.group_index &&
-            best.distance <= 1.0f;
+        const Candidate* selected = &best;
+        bool confirmed_switch = false;
 
-        if (!continuing)
+        if (track_fresh && closest != nullptr && closest->group_index != best.group_index)
+        {
+            if (best.score - closest->score < _params.ambiguity_margin)
+            {
+                selected = closest;
+                resetPendingSwitch();
+            }
+            else if (!confirmPendingSwitch(candidate_horizon, timestamp_ns))
+            {
+                return trackedOutput(track_fresh);
+            }
+            else
+            {
+                confirmed_switch = true;
+            }
+        }
+        else
+        {
+            resetPendingSwitch();
+        }
+
+        if (selected->score < _params.minimum_score)
+        {
+            return trackedOutput(track_fresh);
+        }
+
+        const Horizon selected_horizon = makeHorizon(groups.groups[selected->group_index]);
+        const bool continuing = closest != nullptr &&
+            closest->group_index == selected->group_index &&
+            selected->distance <= 1.0f;
+
+        if (!continuing && !confirmed_switch)
         {
             _confidence = 0.0f;
         }
 
         const float confidence_alpha = 1.0f - std::exp(-frame_elapsed_seconds / _params.tau_rise_seconds);
-        _confidence += confidence_alpha * (best.score - _confidence);
-        _track = candidate_horizon;
+        _confidence += confidence_alpha * (selected->score - _confidence);
+        _track = selected_horizon;
         _track.confidence = _confidence;
         _track_timestamp_ns = timestamp_ns;
         _has_track = true;
@@ -194,7 +228,7 @@ public:
             return {};
         }
 
-        Horizon result = candidate_horizon;
+        Horizon result = selected_horizon;
         result.confidence = _confidence;
         return result;
     }
@@ -238,6 +272,9 @@ private:
     Horizon _track;
     int64_t _track_timestamp_ns = 0;
     int64_t _last_timestamp_ns = 0;
+    Horizon _pending_switch;
+    int64_t _pending_switch_timestamp_ns = 0;
+    int _pending_switch_count = 0;
     float _confidence = 0.0f;
     bool _has_track = false;
     bool _has_timestamp = false;
@@ -313,6 +350,49 @@ private:
             _confidence = 0.0f;
             _track.confidence = 0.0f;
         }
+    }
+
+    bool confirmPendingSwitch(const Horizon& candidate, int64_t timestamp_ns)
+    {
+        const int64_t elapsed_ns = timestamp_ns - _pending_switch_timestamp_ns;
+        const bool pending_fresh = _pending_switch_count > 0 &&
+            elapsed_ns > 0 &&
+            elapsed_ns <= static_cast<int64_t>(_params.stale_seconds * 1e9f);
+        bool matches_pending = false;
+
+        if (pending_fresh)
+        {
+            const float elapsed_seconds = std::max(static_cast<float>(elapsed_ns) * 1e-9f, 0.05f);
+            float theta = candidate.theta;
+            float rho = candidate.rho;
+            HorizonUtils::alignLine(_pending_switch.theta, theta, rho);
+            const float theta_limit =
+                _params.max_theta_rate_degrees_per_second * std::numbers::pi_v<float> / 180.0f * elapsed_seconds;
+            const float rho_limit = _params.max_rho_rate_per_second * elapsed_seconds;
+            const float distance = std::max(
+                std::abs(theta - _pending_switch.theta) / theta_limit,
+                std::abs(rho - _pending_switch.rho) / rho_limit);
+            matches_pending = distance <= 1.0f;
+        }
+
+        _pending_switch_count = matches_pending ? _pending_switch_count + 1 : 1;
+        _pending_switch = candidate;
+        _pending_switch_timestamp_ns = timestamp_ns;
+
+        if (_pending_switch_count >= _params.switch_confirmation_frames)
+        {
+            resetPendingSwitch();
+            return true;
+        }
+
+        return false;
+    }
+
+    void resetPendingSwitch()
+    {
+        _pending_switch = Horizon();
+        _pending_switch_timestamp_ns = 0;
+        _pending_switch_count = 0;
     }
 
     Horizon trackedOutput(bool track_fresh) const

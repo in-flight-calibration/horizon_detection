@@ -1,4 +1,4 @@
-#include <horizon_detection/horizon_detection.hpp>
+#include <horizon_detection.hpp>
 
 #include <memory>
 

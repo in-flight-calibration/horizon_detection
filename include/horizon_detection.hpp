@@ -1,8 +1,8 @@
 #pragma once
 
-#include <horizon_detection/detector_factory.hpp>
-#include <horizon_detection/detector.hpp>
-#include <horizon_detection/horizon.hpp>
+#include <detector/detector_factory.hpp>
+#include <detector/detector.hpp>
+#include <horizon.hpp>
 #include <ifc_tools/image_receiver.hpp>
 #include <ifc_msgs/msg/horizon.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -23,7 +23,7 @@ public:
     {
         const std::string image_topic = declare_parameter<std::string>("image.topic", "/flightgear/image");
         const std::string image_transport = declare_parameter<std::string>("image.transport", "compressed");
-        const std::string detector_name = declare_parameter<std::string>("horizon.detector", "hough");
+        const std::string detector_name = declare_parameter<std::string>("horizon.detector", "alpha");
         const std::string horizon_topic = declare_parameter<std::string>("horizon.topic", "/horizon_detection/horizon");
 
         _receiver = std::make_shared<ifc_tools::ImageReceiver>("horizon_detection_receiver", image_topic, image_transport);

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <horizon_detection/detector.hpp>
-#include <horizon_detection/detector_hough.hpp>
+#include <detector/detector.hpp>
+#include <detector/hough/detector_alpha.hpp>
 
 #include <memory>
 #include <stdexcept>
@@ -15,9 +15,9 @@ class DetectorFactory
 public:
     static std::unique_ptr<Detector> create(const std::string& name)
     {
-        if (name == "hough")
+        if (name == "alpha")
         {
-            return std::make_unique<DetectorHough>();
+            return std::make_unique<DetectorAlpha>();
         }
 
         throw std::invalid_argument("Unknown horizon detector: " + name);

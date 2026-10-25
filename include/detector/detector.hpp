@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ifc_tools/debug_viewer.hpp>
-#include <horizon_detection/horizon.hpp>
+#include <horizon.hpp>
 
 #include <chrono>
 #include <cstdint>
@@ -23,7 +23,10 @@ public:
     virtual Horizon detect(const rclcpp::Time& timestamp, const cv::Mat& image) = 0;
 
 protected:
-    Detector(const std::string& node_name) : rclcpp::Node(node_name) {}
+    Detector(const std::string& node_name, const rclcpp::NodeOptions& options)
+        : rclcpp::Node(node_name, options)
+    {
+    }
 
     rclcpp::Time _last_update = rclcpp::Time(0);
     Horizon _last_horizon = {};

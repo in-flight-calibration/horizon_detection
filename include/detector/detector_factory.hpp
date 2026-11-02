@@ -1,7 +1,7 @@
 #pragma once
 
 #include <detector/detector.hpp>
-#include <detector/hough/detector_alpha.hpp>
+#include <detector/alpha/detector_alpha.hpp>
 
 #include <memory>
 #include <stdexcept>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <horizon.hpp>
-#include <detector/hough/line_grouping.hpp>
+#include <detector/alpha/line_grouping.hpp>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <detector/detector.hpp>
-#include <detector/hough/edge_detector.hpp>
-#include <detector/hough/horizon_estimator.hpp>
-#include <detector/hough/line_grouping.hpp>
-#include <detector/hough/morphological_closing.hpp>
-#include <detector/hough/line_detector.hpp>
-#include <detector/hough/prefilter.hpp>
+#include <detector/alpha/edge_detector.hpp>
+#include <detector/alpha/horizon_estimator.hpp>
+#include <detector/alpha/line_grouping.hpp>
+#include <detector/alpha/morphological_closing.hpp>
+#include <detector/alpha/line_detector.hpp>
+#include <detector/alpha/prefilter.hpp>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <limits>
 #include <numbers>
+#include <numeric>
 #include <stdexcept>
 #include <vector>
 
@@ -63,7 +64,7 @@ public:
         }
     }
 
-    Horizon estimate(int64_t timestamp_ns, const LineGroups& groups)
+    Horizon estimate(int64_t timestamp_ns, const std::vector<LineGroup>& groups)
     {
         const float frame_elapsed_seconds = _has_timestamp && timestamp_ns > _last_timestamp_ns
             ? static_cast<float>(timestamp_ns - _last_timestamp_ns) * 1e-9f
@@ -83,11 +84,11 @@ public:
         const float max_rho_delta = _params.max_rho_rate_per_second * track_elapsed_seconds;
 
         std::vector<Candidate> candidates;
-        candidates.reserve(groups.groups.size());
+        candidates.reserve(groups.size());
 
-        for (std::size_t group_index = 0; group_index < groups.groups.size(); ++group_index)
+        for (std::size_t group_index = 0; group_index < groups.size(); ++group_index)
         {
-            const LineGroup& group = groups.groups[group_index];
+            const LineGroup& group = groups[group_index];
 
             if (group.coverage < _params.minimum_coverage)
             {
@@ -129,7 +130,7 @@ public:
         {
             resetPendingSwitch();
             clearStaleTrack(timestamp_ns, stale_ns);
-            return trackedOutput(track_fresh);
+            return Detector::INVALID_HORIZON;
         }
 
         const auto best_iterator = std::max_element(
@@ -149,14 +150,14 @@ public:
             }
         }
 
-        const Horizon candidate_horizon = makeHorizon(groups.groups[best.group_index]);
+        const Horizon candidate_horizon = makeHorizon(groups[best.group_index]);
 
         if (best.score < _params.minimum_score ||
             (second_best_score >= 0.0f && best.score - second_best_score < _params.ambiguity_margin))
         {
             resetPendingSwitch();
             clearStaleTrack(timestamp_ns, stale_ns);
-            return trackedOutput(track_fresh);
+            return Detector::INVALID_HORIZON;
         }
 
         const Candidate* closest = nullptr;
@@ -189,7 +190,7 @@ public:
             }
             else if (!confirmPendingSwitch(candidate_horizon, timestamp_ns))
             {
-                return trackedOutput(track_fresh);
+                return Detector::INVALID_HORIZON;
             }
             else
             {
@@ -203,10 +204,10 @@ public:
 
         if (selected->score < _params.minimum_score)
         {
-            return trackedOutput(track_fresh);
+            return Detector::INVALID_HORIZON;
         }
 
-        const Horizon selected_horizon = makeHorizon(groups.groups[selected->group_index]);
+        const Horizon selected_horizon = makeHorizon(groups[selected->group_index]);
         const bool continuing = closest != nullptr &&
             closest->group_index == selected->group_index &&
             selected->distance <= 1.0f;
@@ -233,7 +234,7 @@ public:
         return result;
     }
 
-    static cv::Mat get_debug_view(
+    static cv::Mat getDebugView(
         const cv::Mat& image,
         const Horizon& horizon,
         const HorizonUtils& utils)
@@ -279,28 +280,22 @@ private:
     bool _has_track = false;
     bool _has_timestamp = false;
 
-    static float topmost(std::size_t candidate_index, const LineGroups& groups)
+    static float topmost(std::size_t candidate_index, const std::vector<LineGroup>& groups)
     {
-        const LineGroup& candidate_group = groups.groups[candidate_index];
+        const LineGroup& candidate_group = groups[candidate_index];
         const cv::Point2f normal = HorizonUtils::lineNormal(candidate_group.theta);
         float below_length = 0.0f;
         float total_length = 0.0f;
 
-        for (std::size_t group_index = 0; group_index < groups.groups.size(); ++group_index)
+        for (std::size_t group_index = 0; group_index < groups.size(); ++group_index)
         {
             if (group_index == candidate_index)
             {
                 continue;
             }
 
-            for (const std::size_t segment_index : groups.groups[group_index].segment_indices)
+            for (const Segment& segment : groups[group_index].segments)
             {
-                if (segment_index >= groups.segments.size())
-                {
-                    continue;
-                }
-
-                const Segment& segment = groups.segments[segment_index];
                 const float first_distance = normal.dot(segment.first) - candidate_group.rho;
                 const float second_distance = normal.dot(segment.second) - candidate_group.rho;
                 float below_fraction = 0.0f;
@@ -331,13 +326,19 @@ private:
     static Horizon makeHorizon(const LineGroup& group)
     {
         Horizon horizon;
-        const float segment_count = static_cast<float>(group.segment_indices.size());
+        const float segment_count = static_cast<float>(group.segments.size());
+        const float length = std::accumulate(
+            group.segments.begin(), group.segments.end(), 0.0f,
+            [](float sum, const Segment& segment)
+            {
+                return sum + segment.length;
+            });
         const float root_count = std::sqrt(std::max(segment_count, 1.0f));
-        const float projection_spread = std::max(group.covered_length / std::sqrt(12.0f), 1e-6f);
+        const float projection_spread = std::max(length / std::sqrt(12.0f), 1e-6f);
 
         horizon.theta = group.theta;
         horizon.rho = std::clamp(group.rho, -1.0f, 1.0f);
-        horizon.length = group.covered_length;
+        horizon.length = length;
         horizon.sigma_rho = group.residual / root_count;
         horizon.sigma_theta = group.residual / (root_count * projection_spread);
         return horizon;
@@ -393,18 +394,6 @@ private:
         _pending_switch = Horizon();
         _pending_switch_timestamp_ns = 0;
         _pending_switch_count = 0;
-    }
-
-    Horizon trackedOutput(bool track_fresh) const
-    {
-        if (track_fresh && _confidence >= _params.minimum_confidence)
-        {
-            Horizon result = _track;
-            result.confidence = _confidence;
-            return result;
-        }
-
-        return {};
     }
 };
 

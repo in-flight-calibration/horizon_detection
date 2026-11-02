@@ -62,7 +62,7 @@ public:
 private:
     PrefilterParams _params;
 
-        bool check(const cv::Mat& image) const
+    bool check(const cv::Mat& image) const
     {
         return image.depth() == CV_8U 
             && (image.channels() == 1 || image.channels() == 3 || image.channels() == 4);

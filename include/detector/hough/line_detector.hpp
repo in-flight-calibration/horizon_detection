@@ -17,8 +17,8 @@ struct LineDetectorParams
 {
     int threshold = 50;
 
-    double rho_resolution_px = 3.0;
-    double theta_resolution_degrees = 1.0;
+    double rho_resolution_px = 2.0;
+    double theta_resolution_degrees = 0.5;
     double minimum_line_length_ratio = 0.2;
     double maximum_line_gap_ratio = 0.025;
 };
@@ -65,7 +65,7 @@ public:
         return true;
     }
 
-    static cv::Mat get_debug_view(cv::Size size, const std::vector<cv::Vec4i>& lines)
+    static cv::Mat getDebugView(cv::Size size, const std::vector<cv::Vec4i>& lines)
     {
         cv::Mat output = cv::Mat::zeros(size, CV_8UC1);
 

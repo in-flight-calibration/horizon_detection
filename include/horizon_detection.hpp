@@ -8,6 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <functional>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>

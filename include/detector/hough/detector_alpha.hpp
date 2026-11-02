@@ -80,7 +80,7 @@ private:
         cv::Mat edges;
         cv::Mat closed;
         std::vector<cv::Vec4i> lines;
-        hough::LineGroups groups;
+        std::vector<hough::LineGroup> groups;
         Horizon estimate;
     } _state;
 
@@ -137,9 +137,8 @@ private:
     hough::LineGroupingParams declareLineGroupingParams()
     {
         hough::LineGroupingParams params;
-        params.angle_tolerance_degrees = declareFloat(
-            "horizon.alpha.line_grouping.angle_tolerance_degrees", params.angle_tolerance_degrees);
-        params.rho_tolerance = declareFloat("horizon.alpha.line_grouping.rho_tolerance", params.rho_tolerance);
+        params.distance_tolerance = declareFloat(
+            "horizon.alpha.line_grouping.distance_tolerance", params.distance_tolerance);
         params.slots = declare_parameter<int>("horizon.alpha.line_grouping.slots", params.slots);
         return params;
     }
@@ -176,10 +175,10 @@ private:
             _viewer->update(index / _debug_cols, index % _debug_cols, tile, label);
         };
 
-        const cv::Mat line_detector_view = hough::LineDetector::get_debug_view(_state.image.size(), _state.lines);
-        const cv::Mat line_grouping_view = hough::LineGrouping::get_debug_view(
+        const cv::Mat line_detector_view = hough::LineDetector::getDebugView(_state.image.size(), _state.lines);
+        const cv::Mat line_grouping_view = hough::LineGrouping::getDebugView(
             _state.image.size(), _state.groups, _utils);
-        const cv::Mat estimated_horizon_view = hough::HorizonEstimator::get_debug_view(
+        const cv::Mat estimated_horizon_view = hough::HorizonEstimator::getDebugView(
             _state.image, _state.estimate, _utils);
 
         updateTile(0, _state.filtered, "1:FILTERED");

@@ -22,6 +22,14 @@ public:
 
     virtual Horizon detect(const rclcpp::Time& timestamp, const cv::Mat& image) = 0;
 
+    static constexpr Horizon INVALID_HORIZON = {
+        .theta = std::numeric_limits<float>::quiet_NaN(),
+        .rho = std::numeric_limits<float>::quiet_NaN(),
+        .confidence = 0.0f,
+        .sigma_theta = std::numeric_limits<float>::quiet_NaN(),
+        .sigma_rho = std::numeric_limits<float>::quiet_NaN()
+    };
+
 protected:
     Detector(const std::string& node_name, const rclcpp::NodeOptions& options)
         : rclcpp::Node(node_name, options)

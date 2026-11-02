@@ -37,7 +37,8 @@ public:
         }
     }
 
-    Horizon detect(const rclcpp::Time& timestamp, const cv::Mat& image) override
+protected:
+    Horizon _detect(const rclcpp::Time& image_timestamp, const cv::Mat& image) override
     {
         if (image.empty())
         {
@@ -59,7 +60,7 @@ public:
             return {};
         }
 
-        _state.estimate = _estimator.estimate(timestamp.nanoseconds(), _state.groups);
+        _state.estimate = _estimator.estimate(image_timestamp.nanoseconds(), _state.groups);
 
         if (_viewer)
         {

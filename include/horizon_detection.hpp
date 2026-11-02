@@ -44,20 +44,20 @@ private:
     std::unique_ptr<Detector> _detector;
     rclcpp::Publisher<ifc_msgs::msg::Horizon>::SharedPtr _publisher;
 
-    void onImage(const rclcpp::Time& timestamp, const cv::Mat& image) {
+    void onImage(const rclcpp::Time& image_timestamp, const cv::Mat& image) {
         if (!_detector) {
             return;
         }
 
-        Horizon horizon = _detector->detect(timestamp, image);
-        publish(horizon, timestamp);
+        Horizon horizon = _detector->detect(image_timestamp, image);
+        publish(horizon, image_timestamp);
     }
 
-    void publish(const Horizon& horizon, const rclcpp::Time& timestamp) const
+    void publish(const Horizon& horizon, const rclcpp::Time& image_timestamp) const
     {
         ifc_msgs::msg::Horizon message;
         message.header.stamp = static_cast<builtin_interfaces::msg::Time>(get_clock()->now());
-        message.image_timestamp = static_cast<builtin_interfaces::msg::Time>(timestamp);
+        message.image_timestamp = static_cast<builtin_interfaces::msg::Time>(image_timestamp);
         message.theta = horizon.theta;
         message.rho = horizon.rho;
         message.confidence = horizon.confidence;

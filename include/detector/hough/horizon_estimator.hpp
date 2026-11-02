@@ -10,9 +10,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <numbers>
 #include <numeric>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -21,15 +21,12 @@ namespace horizon::hough
 
 struct HorizonEstimatorParams
 {
-    float minimum_coverage = 0.1f;
-    float minimum_score = 0.5f;
-    float ambiguity_margin = 0.1f;
-    float stale_seconds = 0.1f;
-    float max_theta_rate_degrees_per_second = 90.0f;
-    float max_rho_rate_per_second = 1.0f;
-    float tau_rise_seconds = 0.5f;
-    float minimum_confidence = 0.3f;
-    int switch_confirmation_frames = 2;
+    float minimal_init_score = 0.33f;
+    float minimal_update_score = 0.6f;
+    float timeout_s = 0.1f;
+    float max_theta_rate = 90.0f;
+    float max_rho_rate = 1.0f;
+    float confidance_filter_tau = 0.5f;
 };
 
 class HorizonEstimator
@@ -38,27 +35,20 @@ public:
     explicit HorizonEstimator(const HorizonEstimatorParams& params)
         : _params(params)
     {
-        if (!std::isfinite(_params.minimum_coverage) ||
-            _params.minimum_coverage < 0.0f ||
-            _params.minimum_coverage > 1.0f ||
-            !std::isfinite(_params.minimum_score) ||
-            _params.minimum_score < 0.0f ||
-            _params.minimum_score > 1.0f ||
-            !std::isfinite(_params.ambiguity_margin) ||
-            _params.ambiguity_margin < 0.0f ||
-            _params.ambiguity_margin > 1.0f ||
-            !std::isfinite(_params.stale_seconds) ||
-            _params.stale_seconds <= 0.0f ||
-            !std::isfinite(_params.max_theta_rate_degrees_per_second) ||
-            _params.max_theta_rate_degrees_per_second <= 0.0f ||
-            !std::isfinite(_params.max_rho_rate_per_second) ||
-            _params.max_rho_rate_per_second <= 0.0f ||
-            !std::isfinite(_params.tau_rise_seconds) ||
-            _params.tau_rise_seconds <= 0.0f ||
-            !std::isfinite(_params.minimum_confidence) ||
-            _params.minimum_confidence < 0.0f ||
-            _params.minimum_confidence > 1.0f ||
-            _params.switch_confirmation_frames < 1)
+        if (!std::isfinite(_params.minimal_init_score) ||
+            _params.minimal_init_score < 0.0f ||
+            _params.minimal_init_score > 1.0f ||
+            !std::isfinite(_params.minimal_update_score) ||
+            _params.minimal_update_score < 0.0f ||
+            _params.minimal_update_score > 1.0f ||
+            !std::isfinite(_params.timeout_s) ||
+            _params.timeout_s <= 0.0f ||
+            !std::isfinite(_params.max_theta_rate) ||
+            _params.max_theta_rate <= 0.0f ||
+            !std::isfinite(_params.max_rho_rate) ||
+            _params.max_rho_rate <= 0.0f ||
+            !std::isfinite(_params.confidance_filter_tau) ||
+            _params.confidance_filter_tau <= 0.0f)
         {
             throw std::invalid_argument("Invalid horizon estimator parameter");
         }
@@ -66,172 +56,29 @@ public:
 
     Horizon estimate(int64_t timestamp_ns, const std::vector<LineGroup>& groups)
     {
-        const float frame_elapsed_seconds = _has_timestamp && timestamp_ns > _last_timestamp_ns
-            ? static_cast<float>(timestamp_ns - _last_timestamp_ns) * 1e-9f
-            : 0.0f;
-        _last_timestamp_ns = timestamp_ns;
-        _has_timestamp = true;
-
-        const int64_t stale_ns = static_cast<int64_t>(_params.stale_seconds * 1e9f);
-        const int64_t track_age_ns = timestamp_ns - _track_timestamp_ns;
-        const bool rate_reference_valid = _has_track && track_age_ns >= 0;
-        const bool track_fresh = rate_reference_valid && track_age_ns <= stale_ns;
-        const float track_elapsed_seconds = rate_reference_valid
-            ? std::max(static_cast<float>(track_age_ns) * 1e-9f, 0.05f)
-            : 0.0f;
-        const float max_theta_delta =
-            _params.max_theta_rate_degrees_per_second * std::numbers::pi_v<float> / 180.0f * track_elapsed_seconds;
-        const float max_rho_delta = _params.max_rho_rate_per_second * track_elapsed_seconds;
-
-        std::vector<Candidate> candidates;
-        candidates.reserve(groups.size());
-
-        for (std::size_t group_index = 0; group_index < groups.size(); ++group_index)
-        {
-            const LineGroup& group = groups[group_index];
-
-            if (group.coverage < _params.minimum_coverage)
-            {
-                continue;
-            }
-
-            Candidate candidate;
-            candidate.group_index = group_index;
-            candidate.mu_coverage = std::clamp(group.coverage, 0.0f, 1.0f);
-            candidate.mu_top = topmost(group_index, groups);
-
-            if (rate_reference_valid)
-            {
-                float theta = group.theta;
-                float rho = group.rho;
-                HorizonUtils::alignLine(_track.theta, theta, rho);
-                const float theta_delta = std::abs(theta - _track.theta);
-                const float rho_delta = std::abs(rho - _track.rho);
-                candidate.distance = std::max(theta_delta / max_theta_delta, rho_delta / max_rho_delta);
-
-                if (candidate.distance > 1.0f)
-                {
-                    continue;
-                }
-
-                if (track_fresh)
-                {
-                    candidate.mu_previous = std::max(0.0f, 1.0f - candidate.distance);
-                    candidate.has_previous = true;
-                }
-            }
-
-            const float criterion_count = candidate.has_previous ? 3.0f : 2.0f;
-            candidate.score = (candidate.mu_coverage + candidate.mu_top + candidate.mu_previous) / criterion_count;
-            candidates.push_back(candidate);
-        }
-
-        if (candidates.empty())
-        {
-            resetPendingSwitch();
-            clearStaleTrack(timestamp_ns, stale_ns);
-            return Detector::INVALID_HORIZON;
-        }
-
-        const auto best_iterator = std::max_element(
-            candidates.begin(), candidates.end(),
-            [](const Candidate& lhs, const Candidate& rhs)
-            {
-                return lhs.score < rhs.score;
-            });
-        const Candidate& best = *best_iterator;
-        float second_best_score = -1.0f;
-
-        for (const Candidate& candidate : candidates)
-        {
-            if (&candidate != &best)
-            {
-                second_best_score = std::max(second_best_score, candidate.score);
-            }
-        }
-
-        const Horizon candidate_horizon = makeHorizon(groups[best.group_index]);
-
-        if (best.score < _params.minimum_score ||
-            (second_best_score >= 0.0f && best.score - second_best_score < _params.ambiguity_margin))
-        {
-            resetPendingSwitch();
-            clearStaleTrack(timestamp_ns, stale_ns);
-            return Detector::INVALID_HORIZON;
-        }
-
-        const Candidate* closest = nullptr;
-
-        if (track_fresh)
-        {
-            for (const Candidate& candidate : candidates)
-            {
-                if (!candidate.has_previous)
-                {
-                    continue;
-                }
-
-                if (closest == nullptr || candidate.distance < closest->distance)
-                {
-                    closest = &candidate;
-                }
-            }
-        }
-
-        const Candidate* selected = &best;
-        bool confirmed_switch = false;
-
-        if (track_fresh && closest != nullptr && closest->group_index != best.group_index)
-        {
-            if (best.score - closest->score < _params.ambiguity_margin)
-            {
-                selected = closest;
-                resetPendingSwitch();
-            }
-            else if (!confirmPendingSwitch(candidate_horizon, timestamp_ns))
-            {
-                return Detector::INVALID_HORIZON;
-            }
-            else
-            {
-                confirmed_switch = true;
-            }
-        }
-        else
-        {
-            resetPendingSwitch();
-        }
-
-        if (selected->score < _params.minimum_score)
+        if (groups.empty())
         {
             return Detector::INVALID_HORIZON;
         }
 
-        const Horizon selected_horizon = makeHorizon(groups[selected->group_index]);
-        const bool continuing = closest != nullptr &&
-            closest->group_index == selected->group_index &&
-            selected->distance <= 1.0f;
+        const float dt = checkTimestamp(timestamp_ns);
 
-        if (!continuing && !confirmed_switch)
+        const std::vector<float> scores = score(dt, groups);
+        const std::size_t best_index = static_cast<std::size_t>(
+            std::distance(scores.begin(), std::max_element(scores.begin(), scores.end())));
+        const LineGroup best = groups[best_index];
+        
+        const float best_score = scores[best_index];
+        const float minimal_score = _last_horizon ? _params.minimal_update_score : _params.minimal_init_score;
+
+        if (best_score < minimal_score)
         {
-            _confidence = 0.0f;
+            return Detector::INVALID_HORIZON;
         }
 
-        const float confidence_alpha = 1.0f - std::exp(-frame_elapsed_seconds / _params.tau_rise_seconds);
-        _confidence += confidence_alpha * (selected->score - _confidence);
-        _track = selected_horizon;
-        _track.confidence = _confidence;
-        _track_timestamp_ns = timestamp_ns;
-        _has_track = true;
-
-        if (_confidence < _params.minimum_confidence)
-        {
-            return {};
-        }
-
-        Horizon result = selected_horizon;
-        result.confidence = _confidence;
-        return result;
+        const float alpha = _last_horizon ? 1.0f - std::exp(-dt / _params.confidance_filter_tau) : 1.0f;
+        _confidance += alpha * (best_score - _confidance);
+        return finalize(timestamp_ns, best);
     }
 
     static cv::Mat getDebugView(
@@ -258,74 +105,150 @@ public:
     }
 
 private:
-    struct Candidate
-    {
-        std::size_t group_index = 0;
-        float mu_coverage = 0.0f;
-        float mu_top = 0.0f;
-        float mu_previous = 0.0f;
-        float distance = std::numeric_limits<float>::infinity();
-        float score = 0.0f;
-        bool has_previous = false;
-    };
-
     HorizonEstimatorParams _params;
-    Horizon _track;
-    int64_t _track_timestamp_ns = 0;
-    int64_t _last_timestamp_ns = 0;
-    Horizon _pending_switch;
-    int64_t _pending_switch_timestamp_ns = 0;
-    int _pending_switch_count = 0;
-    float _confidence = 0.0f;
-    bool _has_track = false;
-    bool _has_timestamp = false;
+    std::optional<Horizon> _last_horizon;
+    int64_t _last_horizon_update_ns = 0;
+    float _confidance = 0.0f;
 
-    static float topmost(std::size_t candidate_index, const std::vector<LineGroup>& groups)
+    float checkTimestamp(int64_t timestamp_ns)
     {
-        const LineGroup& candidate_group = groups[candidate_index];
-        const cv::Point2f normal = HorizonUtils::lineNormal(candidate_group.theta);
-        float below_length = 0.0f;
-        float total_length = 0.0f;
-
-        for (std::size_t group_index = 0; group_index < groups.size(); ++group_index)
+        if (!_last_horizon)
         {
-            if (group_index == candidate_index)
+            return 0.0f;
+        }
+
+        const float dt = static_cast<float>(timestamp_ns - _last_horizon_update_ns) * 1e-9f;
+
+        if (dt < 0.0f || dt > _params.timeout_s)
+        {
+            _last_horizon = std::nullopt;
+            _last_horizon_update_ns = 0;
+            _confidance = 0.0f;
+            return 0.0f;
+        }
+
+        return dt;
+    }
+
+    std::vector<float> score(float dt, const std::vector<LineGroup>& groups) const
+    {
+        const std::vector<float> coverage = scoreCoverage(groups);
+        const std::vector<float> top = scoreTop(groups);
+        const std::vector<float> coherence = scoreCoherence(dt, groups);
+        std::vector<float> scores(groups.size());
+
+        for (std::size_t i = 0; i < groups.size(); ++i)
+        {
+            scores[i] = (coverage[i] + top[i] + coherence[i]) / 3.0f;
+        }
+
+        return scores;
+    }
+
+    static std::vector<float> scoreCoverage(const std::vector<LineGroup>& groups)
+    {
+        std::vector<float> scores(groups.size());
+
+        for (std::size_t i = 0; i < groups.size(); ++i)
+        {
+            scores[i] = std::clamp(groups[i].coverage, 0.0f, 1.0f);
+        }
+
+        return scores;
+    }
+
+    static std::vector<float> scoreTop(const std::vector<LineGroup>& groups)
+    {
+        std::vector<float> scores(groups.size(), 1.0f);
+
+        for (std::size_t i = 0; i < groups.size(); ++i)
+        {
+            const cv::Point2f normal = HorizonUtils::lineNormal(groups[i].theta);
+            float below_length = 0.0f;
+            float total_length = 0.0f;
+
+            for (std::size_t j = 0; j < groups.size(); ++j)
             {
-                continue;
+                if (j == i)
+                {
+                    continue;
+                }
+
+                for (const Segment& segment : groups[j].segments)
+                {
+                    const float first = normal.dot(segment.first) - groups[i].rho;
+                    const float second = normal.dot(segment.second) - groups[i].rho;
+                    float below_fraction = 0.0f;
+
+                    if (first < 0.0f && second < 0.0f)
+                    {
+                        below_fraction = 1.0f;
+                    }
+                    else if (first < 0.0f)
+                    {
+                        below_fraction = -first / (second - first);
+                    }
+                    else if (second < 0.0f)
+                    {
+                        below_fraction = -second / (first - second);
+                    }
+
+                    total_length += segment.length;
+                    below_length += segment.length * below_fraction;
+                }
             }
 
-            for (const Segment& segment : groups[group_index].segments)
+            if (total_length > 0.0f)
             {
-                const float first_distance = normal.dot(segment.first) - candidate_group.rho;
-                const float second_distance = normal.dot(segment.second) - candidate_group.rho;
-                float below_fraction = 0.0f;
-
-                if (first_distance < 0.0f && second_distance < 0.0f)
-                {
-                    below_fraction = 1.0f;
-                }
-                else if (first_distance < 0.0f && second_distance >= 0.0f)
-                {
-                    below_fraction = -first_distance / (second_distance - first_distance);
-                }
-                else if (first_distance >= 0.0f && second_distance < 0.0f)
-                {
-                    below_fraction = -second_distance / (first_distance - second_distance);
-                }
-
-                total_length += segment.length;
-                below_length += segment.length * below_fraction;
+                scores[i] = std::clamp(below_length / total_length, 0.0f, 1.0f);
             }
         }
 
-        return total_length > 0.0f
-            ? std::clamp(below_length / total_length, 0.0f, 1.0f)
-            : 1.0f;
+        return scores;
+    }
+
+    std::vector<float> scoreCoherence(float dt, const std::vector<LineGroup>& groups) const
+    {
+        std::vector<float> scores(groups.size(), 0.0f);
+
+        if (!_last_horizon)
+        {
+            return scores;
+        }
+
+        const float step = std::max(dt, 0.05f);
+        const float max_theta_delta = _params.max_theta_rate * std::numbers::pi_v<float> / 180.0f * step;
+        const float max_rho_delta = _params.max_rho_rate * step;
+
+        for (std::size_t i = 0; i < groups.size(); ++i)
+        {
+            float theta = groups[i].theta;
+            float rho = groups[i].rho;
+            HorizonUtils::alignLine(_last_horizon->theta, theta, rho);
+            const float distance = std::max(
+                std::abs(theta - _last_horizon->theta) / max_theta_delta,
+                std::abs(rho - _last_horizon->rho) / max_rho_delta);
+            scores[i] = std::max(0.0f, 1.0f - distance);
+        }
+
+        return scores;
+    }
+
+    Horizon finalize(int64_t timestamp_ns, const LineGroup& group)
+    {
+        Horizon horizon = makeHorizon(group);
+        horizon.confidence = _confidance;
+        _last_horizon = horizon;
+        _last_horizon_update_ns = timestamp_ns;
+        return horizon;
     }
 
     static Horizon makeHorizon(const LineGroup& group)
     {
         Horizon horizon;
+        horizon.theta = group.theta;
+        horizon.rho = std::clamp(group.rho, -1.0f, 1.0f);
+
         const float segment_count = static_cast<float>(group.segments.size());
         const float length = std::accumulate(
             group.segments.begin(), group.segments.end(), 0.0f,
@@ -336,64 +259,10 @@ private:
         const float root_count = std::sqrt(std::max(segment_count, 1.0f));
         const float projection_spread = std::max(length / std::sqrt(12.0f), 1e-6f);
 
-        horizon.theta = group.theta;
-        horizon.rho = std::clamp(group.rho, -1.0f, 1.0f);
-        horizon.length = length;
         horizon.sigma_rho = group.residual / root_count;
         horizon.sigma_theta = group.residual / (root_count * projection_spread);
+
         return horizon;
-    }
-
-    void clearStaleTrack(int64_t timestamp_ns, int64_t stale_ns)
-    {
-        if (_has_track && timestamp_ns - _track_timestamp_ns > stale_ns)
-        {
-            _confidence = 0.0f;
-            _track.confidence = 0.0f;
-        }
-    }
-
-    bool confirmPendingSwitch(const Horizon& candidate, int64_t timestamp_ns)
-    {
-        const int64_t elapsed_ns = timestamp_ns - _pending_switch_timestamp_ns;
-        const bool pending_fresh = _pending_switch_count > 0 &&
-            elapsed_ns > 0 &&
-            elapsed_ns <= static_cast<int64_t>(_params.stale_seconds * 1e9f);
-        bool matches_pending = false;
-
-        if (pending_fresh)
-        {
-            const float elapsed_seconds = std::max(static_cast<float>(elapsed_ns) * 1e-9f, 0.05f);
-            float theta = candidate.theta;
-            float rho = candidate.rho;
-            HorizonUtils::alignLine(_pending_switch.theta, theta, rho);
-            const float theta_limit =
-                _params.max_theta_rate_degrees_per_second * std::numbers::pi_v<float> / 180.0f * elapsed_seconds;
-            const float rho_limit = _params.max_rho_rate_per_second * elapsed_seconds;
-            const float distance = std::max(
-                std::abs(theta - _pending_switch.theta) / theta_limit,
-                std::abs(rho - _pending_switch.rho) / rho_limit);
-            matches_pending = distance <= 1.0f;
-        }
-
-        _pending_switch_count = matches_pending ? _pending_switch_count + 1 : 1;
-        _pending_switch = candidate;
-        _pending_switch_timestamp_ns = timestamp_ns;
-
-        if (_pending_switch_count >= _params.switch_confirmation_frames)
-        {
-            resetPendingSwitch();
-            return true;
-        }
-
-        return false;
-    }
-
-    void resetPendingSwitch()
-    {
-        _pending_switch = Horizon();
-        _pending_switch_timestamp_ns = 0;
-        _pending_switch_count = 0;
     }
 };
 

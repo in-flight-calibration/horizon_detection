@@ -17,7 +17,6 @@ struct Horizon
 {
     float theta         = 0.0f;
     float rho           = 0.0f;
-    float length        = 0.0f;
     float confidence    = 0.0f;
     
     float sigma_theta   = std::numeric_limits<float>::quiet_NaN();

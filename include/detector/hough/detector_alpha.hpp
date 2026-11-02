@@ -146,25 +146,18 @@ private:
     hough::HorizonEstimatorParams declareHorizonEstimatorParams()
     {
         hough::HorizonEstimatorParams params;
-        params.minimum_coverage = declareFloat(
-            "horizon.alpha.estimator.minimum_coverage", params.minimum_coverage);
-        params.minimum_score = declareFloat(
-            "horizon.alpha.estimator.minimum_score", params.minimum_score);
-        params.ambiguity_margin = declareFloat(
-            "horizon.alpha.estimator.ambiguity_margin", params.ambiguity_margin);
-        params.stale_seconds = declareFloat(
-            "horizon.alpha.estimator.stale_seconds", params.stale_seconds);
-        params.max_theta_rate_degrees_per_second = declareFloat(
-            "horizon.alpha.estimator.max_theta_rate_degrees_per_second",
-            params.max_theta_rate_degrees_per_second);
-        params.max_rho_rate_per_second = declareFloat(
-            "horizon.alpha.estimator.max_rho_rate_per_second", params.max_rho_rate_per_second);
-        params.tau_rise_seconds = declareFloat(
-            "horizon.alpha.estimator.tau_rise_seconds", params.tau_rise_seconds);
-        params.minimum_confidence = declareFloat(
-            "horizon.alpha.estimator.minimum_confidence", params.minimum_confidence);
-        params.switch_confirmation_frames = declare_parameter<int>(
-            "horizon.alpha.estimator.switch_confirmation_frames", params.switch_confirmation_frames);
+        params.minimal_init_score = declareFloat(
+            "horizon.alpha.estimator.minimal_init_score", params.minimal_init_score);
+        params.minimal_update_score = declareFloat(
+            "horizon.alpha.estimator.minimal_update_score", params.minimal_update_score);
+        params.timeout_s = declareFloat(
+            "horizon.alpha.estimator.timeout_s", params.timeout_s);
+        params.max_theta_rate = declareFloat(
+            "horizon.alpha.estimator.max_theta_rate", params.max_theta_rate);
+        params.max_rho_rate = declareFloat(
+            "horizon.alpha.estimator.max_rho_rate", params.max_rho_rate);
+        params.confidance_filter_tau = declareFloat(
+            "horizon.alpha.estimator.confidance_filter_tau", params.confidance_filter_tau);
         return params;
     }
 

@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace horizon::hough
@@ -14,6 +15,7 @@ struct PrefilterParams
     double bilateral_sigma_color = 75.0;
     double bilateral_sigma_space = 75.0;
     int gaussian_kernel_size = 7;
+    int downscale = 1;
 };
 
 class Prefilter
@@ -26,7 +28,8 @@ public:
             || _params.bilateral_sigma_color <= 0.0 
             || _params.bilateral_sigma_space <= 0.0
             || _params.gaussian_kernel_size <= 0
-            || _params.gaussian_kernel_size % 2 == 0)
+            || _params.gaussian_kernel_size % 2 == 0
+            || _params.downscale <= 0)
         {
             throw std::invalid_argument("Invalid prefilter parameter");
         }
@@ -40,6 +43,23 @@ public:
         }
 
         cv::Mat gray = toGray(image);
+
+        if (_params.downscale > 1)
+        {
+            cv::Mat reduced;
+
+            cv::resize(
+                gray,
+                reduced,
+                cv::Size(
+                    std::max(1, gray.cols / _params.downscale),
+                    std::max(1, gray.rows / _params.downscale)),
+                0.0,
+                0.0,
+                cv::INTER_AREA);
+
+            gray = reduced;
+        }
 
         cv::Mat smoothed;
 

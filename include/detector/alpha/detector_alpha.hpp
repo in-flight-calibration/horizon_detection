@@ -46,12 +46,19 @@ protected:
             return {};
         }
 
-        _utils.update(image.size());
+        _display_utils.update(image.size());
 
         _state.image = image;
 
-        if (!_prefilter.apply(_state.image, _state.filtered)
-            || !_edge_detector.apply(_state.filtered, _state.edges)
+        if (!_prefilter.apply(_state.image, _state.filtered))
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "Hough processing failed");
+            return {};
+        }
+
+        _utils.update(_state.filtered.size());
+
+        if (!_edge_detector.apply(_state.filtered, _state.edges)
             || !_closing.apply(_state.edges, _state.closed)
             || !_line_detector.detect(_state.closed, _state.lines)
             || !_line_grouping.group(_state.lines, _utils, _state.groups))
@@ -93,6 +100,7 @@ private:
     hough::HorizonEstimator _estimator;
 
     HorizonUtils _utils;
+    HorizonUtils _display_utils;
 
     float declareFloat(const std::string& name, float default_value)
     {
@@ -106,6 +114,7 @@ private:
         params.bilateral_sigma_color = declare_parameter<double>("horizon.alpha.prefilter.bilateral_sigma_color", params.bilateral_sigma_color);
         params.bilateral_sigma_space = declare_parameter<double>("horizon.alpha.prefilter.bilateral_sigma_space", params.bilateral_sigma_space);
         params.gaussian_kernel_size = declare_parameter<int>("horizon.alpha.prefilter.gaussian_kernel_size", params.gaussian_kernel_size);
+        params.downscale = declare_parameter<int>("horizon.alpha.prefilter.downscale", params.downscale);
         return params;
     }
 
@@ -169,11 +178,11 @@ private:
             _viewer->update(index / _debug_cols, index % _debug_cols, tile, label);
         };
 
-        const cv::Mat line_detector_view = hough::LineDetector::getDebugView(_state.image.size(), _state.lines);
+        const cv::Mat line_detector_view = hough::LineDetector::getDebugView(_state.filtered.size(), _state.lines);
         const cv::Mat line_grouping_view = hough::LineGrouping::getDebugView(
-            _state.image.size(), _state.groups, _utils);
+            _state.filtered.size(), _state.groups, _utils);
         const cv::Mat estimated_horizon_view = hough::HorizonEstimator::getDebugView(
-            _state.image, _state.estimate, _utils);
+            _state.image, _state.estimate, _display_utils);
 
         updateTile(0, _state.filtered, "1:FILTERED");
         updateTile(1, _state.edges, "2:EDGE DETECTED");

@@ -18,7 +18,7 @@ struct LineDetectorParams
     int threshold = 50;
 
     double rho_resolution_px = 2.0;
-    double theta_resolution_degrees = 0.5;
+    double theta_resolution_degrees = 0.3;
     double minimum_line_length_ratio = 0.1;
     double maximum_line_gap_ratio = 0.025;
 };

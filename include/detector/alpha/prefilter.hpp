@@ -15,7 +15,7 @@ struct PrefilterParams
     double bilateral_sigma_color = 75.0;
     double bilateral_sigma_space = 75.0;
     int gaussian_kernel_size = 7;
-    int downscale = 1;
+    int downscale = 4;
 };
 
 class Prefilter

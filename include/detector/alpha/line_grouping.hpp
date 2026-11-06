@@ -21,7 +21,7 @@ namespace horizon::hough
 struct LineGroupingParams
 {
     float distance_tolerance = 0.02f;
-    int slots = 5;
+    int slots = 3;
 };
 
 struct Segment
@@ -109,7 +109,7 @@ public:
                 utils.toPixel(point + direction * t_min),
                 utils.toPixel(point + direction * t_max),
                 bgr_color,
-                3,
+                1,
                 cv::LINE_AA);
 
         }

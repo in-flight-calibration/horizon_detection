@@ -12,7 +12,7 @@ namespace horizon::hough
 
 struct EdgeDetectorParams
 {
-    double canny_high_scale = 2.0;
+    double canny_high_scale = 1.5;
     double canny_low_scale = 0.8;
 };
 

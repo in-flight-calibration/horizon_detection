@@ -11,7 +11,7 @@ namespace horizon::hough
 
 struct MorphologicalClosingParams
 {
-    int closing_kernel_size = 7;
+    int closing_kernel_size = 3;
 };
 
 class MorphologicalClosing

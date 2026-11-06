@@ -4,6 +4,7 @@
 #include <detector/detector.hpp>
 #include <horizon.hpp>
 #include <ifc_tools/image_receiver.hpp>
+#include <ifc_tools/performance_monitor.hpp>
 #include <ifc_msgs/msg/horizon.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -20,7 +21,8 @@ class HorizonDetection final : public rclcpp::Node
 {
 public:
     explicit HorizonDetection(const rclcpp::NodeOptions& options = rclcpp::NodeOptions())
-        : rclcpp::Node("horizon_detection", options)
+        : rclcpp::Node("horizon_detection", options),
+          _performance_monitor(std::make_shared<ifc_tools::PerformanceMonitor>("horizon_detection"))
     {
         const std::string image_topic = declare_parameter<std::string>("image.topic", "/flightgear/image");
         const std::string image_transport = declare_parameter<std::string>("image.transport", "compressed");
@@ -31,6 +33,13 @@ public:
         _detector = DetectorFactory::create(detector_name);
         _publisher = create_publisher<ifc_msgs::msg::Horizon>(horizon_topic, rclcpp::ServicesQoS());
         
+        const std::string performance_topic = declare_parameter<std::string>("horizon.performance_topic", "/performance/horizon_detection");
+
+        if (!performance_topic.empty())
+        {
+            _performance_monitor->setTopic(performance_topic);
+        }
+
         _receiver->setCallback(std::bind(&HorizonDetection::onImage, this, std::placeholders::_1, std::placeholders::_2));
     }
 
@@ -39,9 +48,15 @@ public:
         return _receiver;
     }
 
+    const std::shared_ptr<ifc_tools::PerformanceMonitor>& performanceMonitor() const
+    {
+        return _performance_monitor;
+    }
+
 private:
     std::shared_ptr<ifc_tools::ImageReceiver> _receiver;
     std::unique_ptr<Detector> _detector;
+    std::shared_ptr<ifc_tools::PerformanceMonitor> _performance_monitor;
     rclcpp::Publisher<ifc_msgs::msg::Horizon>::SharedPtr _publisher;
 
     void onImage(const rclcpp::Time& image_timestamp, const cv::Mat& image) {
@@ -49,7 +64,9 @@ private:
             return;
         }
 
+        _performance_monitor->start();
         Horizon horizon = _detector->detect(image_timestamp, image);
+        _performance_monitor->stop();
         publish(horizon, image_timestamp);
     }
 

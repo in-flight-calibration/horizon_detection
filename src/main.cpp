@@ -10,6 +10,7 @@ int main(int argc, char* argv[])
 
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node->receiver());
+    executor.add_node(node->performanceMonitor());
     executor.spin();
 
     rclcpp::shutdown();

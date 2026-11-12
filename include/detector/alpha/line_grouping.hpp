@@ -21,6 +21,7 @@ namespace horizon::hough
 struct LineGroupingParams
 {
     float distance_tolerance = 0.02f;
+    float minimal_coverage = 0.5f;
     int slots = 3;
 };
 
@@ -50,6 +51,8 @@ public:
     {
         if (!std::isfinite(_params.distance_tolerance) ||
             _params.distance_tolerance <= 0.0f ||
+            !std::isfinite(_params.minimal_coverage) ||
+            _params.minimal_coverage < 0.0f ||
             _params.slots < 1)
         {
             throw std::invalid_argument("Invalid line grouping parameter");
@@ -66,6 +69,13 @@ public:
         {
             evaluateGroup(group, utils);
         }
+
+        std::erase_if(
+            groups,
+            [this](const LineGroup& group)
+            {
+                return group.coverage < _params.minimal_coverage;
+            });
 
         sortGroups(groups);
         groups.resize(std::min(groups.size(), static_cast<std::size_t>(_params.slots)));

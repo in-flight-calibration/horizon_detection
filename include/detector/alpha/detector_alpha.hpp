@@ -149,6 +149,8 @@ private:
         hough::LineGroupingParams params;
         params.distance_tolerance = declareFloat(
             "horizon.alpha.line_grouping.distance_tolerance", params.distance_tolerance);
+        params.minimal_coverage = declareFloat(
+            "horizon.alpha.line_grouping.minimal_coverage", params.minimal_coverage);
         params.slots = declare_parameter<int>("horizon.alpha.line_grouping.slots", params.slots);
         return params;
     }

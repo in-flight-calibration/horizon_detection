@@ -26,14 +26,14 @@ public:
     {
         const std::string image_topic = declare_parameter<std::string>("image.topic", "/flightgear/image");
         const std::string image_transport = declare_parameter<std::string>("image.transport", "compressed");
-        const std::string detector_name = declare_parameter<std::string>("horizon.detector", "alpha");
-        const std::string horizon_topic = declare_parameter<std::string>("horizon.topic", "/horizon_detection/horizon");
+        const std::string detector_name = declare_parameter<std::string>("horizon_detection.detector", "alpha");
+        const std::string horizon_topic = declare_parameter<std::string>("horizon_detection.topic", "/horizon_detection/horizon");
 
         _receiver = std::make_shared<ifc_tools::ImageReceiver>("horizon_detection_receiver", image_topic, image_transport);
         _detector = DetectorFactory::create(detector_name);
         _publisher = create_publisher<ifc_msgs::msg::Horizon>(horizon_topic, rclcpp::ServicesQoS());
         
-        const std::string performance_topic = declare_parameter<std::string>("horizon.performance_topic", "/performance/horizon_detection");
+        const std::string performance_topic = declare_parameter<std::string>("horizon_detection.performance_topic", "/horizon_detection/performance");
 
         if (!performance_topic.empty())
         {

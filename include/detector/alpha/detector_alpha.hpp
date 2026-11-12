@@ -31,7 +31,7 @@ public:
           _line_grouping(declareLineGroupingParams()),
           _estimator(declareHorizonEstimatorParams())
     {
-        if (declare_parameter<bool>("horizon.debug_view", false))
+        if (declare_parameter<bool>("horizon_detection.debug_view", false))
         {
             _viewer.emplace(cv::Size(1280, 720), _debug_rows, _debug_cols);
         }
@@ -110,37 +110,37 @@ private:
     hough::PrefilterParams declarePrefilterParams()
     {
         hough::PrefilterParams params;
-        params.bilateral_diameter = declare_parameter<int>("horizon.alpha.prefilter.bilateral_diameter", params.bilateral_diameter);
-        params.bilateral_sigma_color = declare_parameter<double>("horizon.alpha.prefilter.bilateral_sigma_color", params.bilateral_sigma_color);
-        params.bilateral_sigma_space = declare_parameter<double>("horizon.alpha.prefilter.bilateral_sigma_space", params.bilateral_sigma_space);
-        params.gaussian_kernel_size = declare_parameter<int>("horizon.alpha.prefilter.gaussian_kernel_size", params.gaussian_kernel_size);
-        params.downscale = declare_parameter<int>("horizon.alpha.prefilter.downscale", params.downscale);
+        params.bilateral_diameter = declare_parameter<int>("horizon_detection.alpha.prefilter.bilateral_diameter", params.bilateral_diameter);
+        params.bilateral_sigma_color = declare_parameter<double>("horizon_detection.alpha.prefilter.bilateral_sigma_color", params.bilateral_sigma_color);
+        params.bilateral_sigma_space = declare_parameter<double>("horizon_detection.alpha.prefilter.bilateral_sigma_space", params.bilateral_sigma_space);
+        params.gaussian_kernel_size = declare_parameter<int>("horizon_detection.alpha.prefilter.gaussian_kernel_size", params.gaussian_kernel_size);
+        params.downscale = declare_parameter<int>("horizon_detection.alpha.prefilter.downscale", params.downscale);
         return params;
     }
 
     hough::EdgeDetectorParams declareEdgeDetectorParams()
     {
         hough::EdgeDetectorParams params;
-        params.canny_high_scale = declare_parameter<double>("horizon.alpha.edge_detector.canny_high_scale", params.canny_high_scale);
-        params.canny_low_scale = declare_parameter<double>("horizon.alpha.edge_detector.canny_low_scale", params.canny_low_scale);
+        params.canny_high_scale = declare_parameter<double>("horizon_detection.alpha.edge_detector.canny_high_scale", params.canny_high_scale);
+        params.canny_low_scale = declare_parameter<double>("horizon_detection.alpha.edge_detector.canny_low_scale", params.canny_low_scale);
         return params;
     }
 
     hough::MorphologicalClosingParams declareMorphologicalClosingParams()
     {
         hough::MorphologicalClosingParams params;
-        params.closing_kernel_size = declare_parameter<int>("horizon.alpha.closing.kernel_size", params.closing_kernel_size);
+        params.closing_kernel_size = declare_parameter<int>("horizon_detection.alpha.closing.kernel_size", params.closing_kernel_size);
         return params;
     }
 
     hough::LineDetectorParams declareLineDetectorParams()
     {
         hough::LineDetectorParams params;
-        params.rho_resolution_px = declare_parameter<double>("horizon.alpha.line_detect.rho_resolution_px", params.rho_resolution_px);
-        params.theta_resolution_degrees = declare_parameter<double>("horizon.alpha.line_detect.theta_resolution_degrees", params.theta_resolution_degrees);
-        params.threshold = declare_parameter<int>("horizon.alpha.line_detect.threshold", params.threshold);
-        params.minimum_line_length_ratio = declare_parameter<double>("horizon.alpha.line_detect.minimum_line_length_ratio", params.minimum_line_length_ratio);
-        params.maximum_line_gap_ratio = declare_parameter<double>("horizon.alpha.line_detect.maximum_line_gap_ratio", params.maximum_line_gap_ratio);
+        params.rho_resolution_px = declare_parameter<double>("horizon_detection.alpha.line_detect.rho_resolution_px", params.rho_resolution_px);
+        params.theta_resolution_degrees = declare_parameter<double>("horizon_detection.alpha.line_detect.theta_resolution_degrees", params.theta_resolution_degrees);
+        params.threshold = declare_parameter<int>("horizon_detection.alpha.line_detect.threshold", params.threshold);
+        params.minimum_line_length_ratio = declare_parameter<double>("horizon_detection.alpha.line_detect.minimum_line_length_ratio", params.minimum_line_length_ratio);
+        params.maximum_line_gap_ratio = declare_parameter<double>("horizon_detection.alpha.line_detect.maximum_line_gap_ratio", params.maximum_line_gap_ratio);
         return params;
     }
 
@@ -148,10 +148,10 @@ private:
     {
         hough::LineGroupingParams params;
         params.distance_tolerance = declareFloat(
-            "horizon.alpha.line_grouping.distance_tolerance", params.distance_tolerance);
+            "horizon_detection.alpha.line_grouping.distance_tolerance", params.distance_tolerance);
         params.minimal_coverage = declareFloat(
-            "horizon.alpha.line_grouping.minimal_coverage", params.minimal_coverage);
-        params.slots = declare_parameter<int>("horizon.alpha.line_grouping.slots", params.slots);
+            "horizon_detection.alpha.line_grouping.minimal_coverage", params.minimal_coverage);
+        params.slots = declare_parameter<int>("horizon_detection.alpha.line_grouping.slots", params.slots);
         return params;
     }
 
@@ -159,17 +159,17 @@ private:
     {
         hough::HorizonEstimatorParams params;
         params.minimal_init_score = declareFloat(
-            "horizon.alpha.estimator.minimal_init_score", params.minimal_init_score);
+            "horizon_detection.alpha.estimator.minimal_init_score", params.minimal_init_score);
         params.minimal_update_score = declareFloat(
-            "horizon.alpha.estimator.minimal_update_score", params.minimal_update_score);
+            "horizon_detection.alpha.estimator.minimal_update_score", params.minimal_update_score);
         params.timeout_s = declareFloat(
-            "horizon.alpha.estimator.timeout_s", params.timeout_s);
+            "horizon_detection.alpha.estimator.timeout_s", params.timeout_s);
         params.max_theta_rate = declareFloat(
-            "horizon.alpha.estimator.max_theta_rate", params.max_theta_rate);
+            "horizon_detection.alpha.estimator.max_theta_rate", params.max_theta_rate);
         params.max_rho_rate = declareFloat(
-            "horizon.alpha.estimator.max_rho_rate", params.max_rho_rate);
+            "horizon_detection.alpha.estimator.max_rho_rate", params.max_rho_rate);
         params.confidance_filter_tau = declareFloat(
-            "horizon.alpha.estimator.confidance_filter_tau", params.confidance_filter_tau);
+            "horizon_detection.alpha.estimator.confidance_filter_tau", params.confidance_filter_tau);
         return params;
     }
 

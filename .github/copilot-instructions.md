@@ -6,8 +6,8 @@
 
 - `horizon_detection_node` runs `horizon::HorizonDetection`, which owns an `ifc_tools::ImageReceiver`, a `Detector` pointer, and the ROS publisher. `main` adds only the receiver to its executor.
 - `Detector` inherits `rclcpp::Node`, stores optional `DebugViewer`, and exposes `detect(timestamp, image)`.
-- `DetectorFactory::create(name)` constructs the configured implementation. `DetectorAlpha` runs the stages below and is selected with `horizon.detector: alpha`.
-- `horizon.debug_view` defaults to `false`; when enabled, the detector displays a labeled 2×3 mosaic: filtered image, Canny, closing, Hough segments, grouped candidates, final horizon.
+- `DetectorFactory::create(name)` constructs the configured implementation. `DetectorAlpha` runs the stages below and is selected with `horizon_detection.detector: alpha`.
+- `horizon_detection.debug_view` defaults to `false`; when enabled, the detector displays a labeled 2×3 mosaic: filtered image, Canny, closing, Hough segments, grouped candidates, final horizon.
 - Stage headers are under `include/detector/hough/` in `horizon::hough`; shared line math is `HorizonUtils` in `horizon.hpp`. Geometry uses `float`.
 - `HorizonEstimator::estimate(timestamp_ns, groups)` returns a `Horizon` directly. `scoreCoverage`, `scoreTop` and `scoreCoherence` each return one score per group; `scoreGroup` averages them and the leader is accepted if it reaches `minimal_init_score` (no last horizon) or `minimal_update_score`. Coherence is rate-limited closeness to the last horizon; confidence is filtered with `confidance_filter_tau` and the last horizon expires after `timeout_s`.
 - `Horizon` fields are `theta`, `rho`, `confidence`, `sigma_theta`, `sigma_rho`; there is no `valid` field and zero confidence denotes no detection internally; `publish()` sends it as confidence inf with NaN geometry, and held tracks are not published.
@@ -30,7 +30,7 @@
 5. `LineGrouping`: greedily clusters normalized segments (longest first) into at most `slots` groups, fits a length-weighted TLS line per group, computes coverage as union of segment projections / visible length, and sorts groups by coverage.
 6. `HorizonEstimator`: chooses a candidate and accumulates confidence.
 
-All stage parameters are ROS parameters under `horizon.alpha.*`; header defaults match workspace-root `config.yaml`.
+All stage parameters are ROS parameters under `horizon_detection.alpha.*`; header defaults match workspace-root `config.yaml`.
 
 ## Build / run (from the workspace root)
 

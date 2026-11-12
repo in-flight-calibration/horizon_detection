@@ -3,8 +3,8 @@
 #include <detector/detector_factory.hpp>
 #include <detector/detector.hpp>
 #include <horizon.hpp>
-#include <ifc_tools/image_receiver.hpp>
-#include <ifc_tools/performance_monitor.hpp>
+#include <ifc_tools/receiver/image_receiver.hpp>
+#include <ifc_tools/common/performance_monitor.hpp>
 #include <ifc_msgs/msg/horizon.hpp>
 #include <rclcpp/rclcpp.hpp>
 

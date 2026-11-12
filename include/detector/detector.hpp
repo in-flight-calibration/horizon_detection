@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ifc_tools/debug_viewer.hpp>
+#include <ifc_tools/common/debug_viewer.hpp>
 #include <horizon.hpp>
 
 #include <chrono>

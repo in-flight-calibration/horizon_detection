@@ -137,7 +137,7 @@ private:
     {
         hough::LineDetectorParams params;
         params.rho_resolution_px = declare_parameter<double>("horizon_detection.alpha.line_detect.rho_resolution_px", params.rho_resolution_px);
-        params.theta_resolution_degrees = declare_parameter<double>("horizon_detection.alpha.line_detect.theta_resolution_degrees", params.theta_resolution_degrees);
+        params.theta_resolution_rad = declare_parameter<double>("horizon_detection.alpha.line_detect.theta_resolution_rad", params.theta_resolution_rad);
         params.threshold = declare_parameter<int>("horizon_detection.alpha.line_detect.threshold", params.threshold);
         params.minimum_line_length_ratio = declare_parameter<double>("horizon_detection.alpha.line_detect.minimum_line_length_ratio", params.minimum_line_length_ratio);
         params.maximum_line_gap_ratio = declare_parameter<double>("horizon_detection.alpha.line_detect.maximum_line_gap_ratio", params.maximum_line_gap_ratio);
@@ -162,8 +162,8 @@ private:
             "horizon_detection.alpha.estimator.minimal_init_score", params.minimal_init_score);
         params.minimal_update_score = declareFloat(
             "horizon_detection.alpha.estimator.minimal_update_score", params.minimal_update_score);
-        params.timeout_s = declareFloat(
-            "horizon_detection.alpha.estimator.timeout_s", params.timeout_s);
+        params.timeout_ms = declare_parameter<int>(
+            "horizon_detection.alpha.estimator.timeout_ms", params.timeout_ms);
         params.max_theta_rate = declareFloat(
             "horizon_detection.alpha.estimator.max_theta_rate", params.max_theta_rate);
         params.max_rho_rate = declareFloat(

@@ -23,7 +23,7 @@ struct HorizonEstimatorParams
 {
     float minimal_init_score = 0.33f;
     float minimal_update_score = 0.6f;
-    float timeout_s = 0.1f;
+    int timeout_ms = 100;
     float max_theta_rate = 90.0f;
     float max_rho_rate = 1.0f;
     float confidance_filter_tau = 0.5f;
@@ -41,8 +41,7 @@ public:
             !std::isfinite(_params.minimal_update_score) ||
             _params.minimal_update_score < 0.0f ||
             _params.minimal_update_score > 1.0f ||
-            !std::isfinite(_params.timeout_s) ||
-            _params.timeout_s <= 0.0f ||
+            _params.timeout_ms <= 0 ||
             !std::isfinite(_params.max_theta_rate) ||
             _params.max_theta_rate <= 0.0f ||
             !std::isfinite(_params.max_rho_rate) ||
@@ -119,7 +118,7 @@ private:
 
         const float dt = static_cast<float>(timestamp_ns - _last_horizon_update_ns) * 1e-9f;
 
-        if (dt < 0.0f || dt > _params.timeout_s)
+        if (dt < 0.0f || dt * 1000.0f > static_cast<float>(_params.timeout_ms))
         {
             _last_horizon = std::nullopt;
             _last_horizon_update_ns = 0;

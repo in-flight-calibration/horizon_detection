@@ -6,7 +6,6 @@
 #include <opencv2/imgproc.hpp>
 
 #include <cmath>
-#include <numbers>
 #include <stdexcept>
 #include <vector>
 
@@ -18,7 +17,7 @@ struct LineDetectorParams
     int threshold = 50;
 
     double rho_resolution_px = 2.0;
-    double theta_resolution_degrees = 0.3;
+    double theta_resolution_rad = 0.005;
     double minimum_line_length_ratio = 0.1;
     double maximum_line_gap_ratio = 0.025;
 };
@@ -30,9 +29,9 @@ public:
         : _params(params)
     {
         if (!std::isfinite(_params.rho_resolution_px) ||
-            !std::isfinite(_params.theta_resolution_degrees) ||
+            !std::isfinite(_params.theta_resolution_rad) ||
             _params.rho_resolution_px <= 0.0 ||
-            _params.theta_resolution_degrees <= 0.0 ||
+            _params.theta_resolution_rad <= 0.0 ||
             !std::isfinite(_params.minimum_line_length_ratio) ||
             !std::isfinite(_params.maximum_line_gap_ratio) ||
             _params.threshold <= 0 ||
@@ -57,7 +56,7 @@ public:
             edges,
             lines,
             _params.rho_resolution_px,
-            _params.theta_resolution_degrees * std::numbers::pi / 180.0,
+            _params.theta_resolution_rad,
             _params.threshold,
             _params.minimum_line_length_ratio * width,
             _params.maximum_line_gap_ratio * width);

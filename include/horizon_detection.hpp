@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace horizon
 {
@@ -43,14 +44,9 @@ public:
         _receiver->setCallback(std::bind(&HorizonDetection::onImage, this, std::placeholders::_1, std::placeholders::_2));
     }
 
-    const std::shared_ptr<ifc_tools::ImageReceiver>& receiver() const
+    std::vector<rclcpp::Node::SharedPtr> children() const
     {
-        return _receiver;
-    }
-
-    const std::shared_ptr<ifc_tools::PerformanceMonitor>& performanceMonitor() const
-    {
-        return _performance_monitor;
+        return {_receiver, _performance_monitor};
     }
 
 private:

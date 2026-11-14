@@ -4,7 +4,7 @@
 
 `horizon_detection` is a ROS 2 `ament_cmake` C++20 package in the colcon workspace at `/home/wgajda/dev/ifc`. The package directory is its own git repository. Detector classes and the node are header-only; only `src/main.cpp` is compiled.
 
-- `horizon_detection_node` runs `horizon::HorizonDetection`, which owns an `ifc_tools::ImageReceiver`, a `Detector` pointer, and the ROS publisher. `main` adds only the receiver to its executor.
+- `horizon_detection_node` runs `horizon::HorizonDetection`, which owns an `ifc_tools::ImageReceiver`, a `Detector` pointer, and the ROS publisher. `main` adds the node and its `children()` (receiver, performance monitor) to its executor.
 - `Detector` inherits `rclcpp::Node`, stores optional `DebugViewer`, and exposes `detect(timestamp, image)`.
 - `DetectorFactory::create(name)` constructs the configured implementation. `DetectorAlpha` runs the stages below and is selected with `horizon_detection.detector: alpha`.
 - `horizon_detection.debug_view` defaults to `false`; when enabled, the detector displays a labeled 2×3 mosaic: filtered image, Canny, closing, Hough segments, grouped candidates, final horizon.

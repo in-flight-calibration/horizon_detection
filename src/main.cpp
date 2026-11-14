@@ -9,8 +9,13 @@ int main(int argc, char* argv[])
     auto node = std::make_shared<horizon::HorizonDetection>();
 
     rclcpp::executors::SingleThreadedExecutor executor;
-    executor.add_node(node->receiver());
-    executor.add_node(node->performanceMonitor());
+    executor.add_node(node);
+
+    for (const rclcpp::Node::SharedPtr& child : node->children())
+    {
+        executor.add_node(child);
+    }
+
     executor.spin();
 
     rclcpp::shutdown();
